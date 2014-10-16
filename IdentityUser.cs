@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.AspNet.Identity;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -23,7 +24,20 @@ namespace MongoDB.AspNet.Identity
         /// Gets or sets the name of the user.
         /// </summary>
         /// <value>The name of the user.</value>
-		public virtual string UserName { get; set; }
+        public virtual string UserName { get; set; }
+        /// <summary>
+        /// Gets the name of the user in a lower case.  Ignores a setter.
+        /// </summary>
+        public virtual string UserNameLowerCase { get; set; }
+        /// <summary>
+        /// Gets or sets the email of the user.
+        /// </summary>
+        /// <value>The email of the user.</value>
+        public virtual string Email { get; set; }
+        /// <summary>
+        /// Gets or sets whether the email has been confirmed for the user.
+        /// </summary>
+        public virtual bool EmailConfirmed { get; set; }
         /// <summary>
         /// Gets or sets the password hash.
         /// </summary>
@@ -50,6 +64,7 @@ namespace MongoDB.AspNet.Identity
         /// <value>The logins.</value>
 		public virtual List<UserLoginInfo> Logins { get; private set; }
 
+        
         /// <summary>
         /// Initializes a new instance of the <see cref="IdentityUser"/> class.
         /// </summary>

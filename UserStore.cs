@@ -8,15 +8,19 @@ using Microsoft.AspNet.Identity;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
+using StackExchange.Profiling.MongoDB;
 
 namespace MongoDB.AspNet.Identity
 {
     /// <summary>
-    ///     Class UserStore.
+    ///  Implements USerStore logic for OWIN in MongoDB.
     /// </summary>
     /// <typeparam name="TUser">The type of the t user.</typeparam>
+    /// <remarks>
+    /// The <see cref="TUser"/> implementation may include a property "UserNameLowerCase" to allow more efficient username searches that are case insensitive.
+    /// </remarks>
     public class UserStore<TUser> : IUserLoginStore<TUser>, IUserClaimStore<TUser>, IUserRoleStore<TUser>,
-        IUserPasswordStore<TUser>, IUserSecurityStampStore<TUser>
+        IUserPasswordStore<TUser>, IUserSecurityStampStore<TUser>, IUserEmailStore<TUser>, IUserStore<TUser>, IQueryableUserStore<TUser>
         where TUser : IdentityUser
     {
         #region Private Methods & Variables
@@ -34,8 +38,11 @@ namespace MongoDB.AspNet.Identity
         /// <summary>
         /// The AspNetUsers collection name
         /// </summary>
+#if UNIT_TESTING
+        private const string collectionName = "AspNetUsers_UnitTesting";
+#else
         private const string collectionName = "AspNetUsers";
-
+#endif
         /// <summary>
         ///     Gets the database from connection string.
         /// </summary>
@@ -79,7 +86,7 @@ namespace MongoDB.AspNet.Identity
         private MongoDatabase GetDatabase(string connectionString, string dbName)
         {
             var client = new MongoClient(connectionString);
-            MongoServer server = client.GetServer();
+            MongoServer server = new ProfiledMongoServer(client.GetServer());
             return server.GetDatabase(dbName);
         }
 
@@ -286,9 +293,23 @@ namespace MongoDB.AspNet.Identity
         /// <returns>Task{`0}.</returns>
         public Task<TUser> FindByNameAsync(string userName)
         {
+            if (String.IsNullOrWhiteSpace(userName))
+                return null;
+
             ThrowIfDisposed();
-            
-            TUser user = db.GetCollection<TUser>(collectionName).FindOne((Query.EQ("UserName", userName)));
+
+            TUser user;
+            // Check if TUser implemnents a LowerCase version of hte object and use it to make it more efficient to do case sensitive searches.
+            if (typeof(TUser).GetProperty("UserNameLowerCase") != null)
+            {
+                // TUser implements the lowercase version of the property.
+                user = db.GetCollection<TUser>(collectionName).FindOne((Query.EQ("UserNameLowerCase", userName.ToLower())));
+            }
+            else
+            {
+                user = db.GetCollection<TUser>(collectionName).FindOne((Query.EQ("UserName", userName)));
+            }
+
             return Task.FromResult(user);
         }
 
@@ -544,6 +565,65 @@ namespace MongoDB.AspNet.Identity
         }
 
         #endregion
+
+        public Task<TUser> FindByEmailAsync(string email)
+        {
+            if (String.IsNullOrWhiteSpace(email))
+                throw new ArgumentNullException("email");
+
+            TUser user = db.GetCollection<TUser>(collectionName).FindOne((Query.EQ("Email", email.ToLower())));
+
+            return Task.FromResult(user);
+        }
+
+        public Task<string> GetEmailAsync(TUser user)
+        {
+            return Task.FromResult(user.Email);
+        }
+
+        public Task<bool> GetEmailConfirmedAsync(TUser user)
+        {
+            return Task.FromResult(user.EmailConfirmed);
+        }
+
+        public Task SetEmailAsync(TUser user, string email)
+        {
+            if (String.IsNullOrWhiteSpace(email))
+                throw new ArgumentNullException("email");
+            
+            user.Email = email.ToLower();
+            return Task.FromResult(0);
+        }
+
+        public Task SetEmailConfirmedAsync(TUser user, bool confirmed)
+        {
+            user.EmailConfirmed = confirmed;
+
+            return Task.FromResult(0);
+        }
+
+        public IQueryable<TUser> Users
+        {
+            get
+            {
+                return db.GetCollection<TUser>(collectionName).FindAll().AsQueryable();
+            }
+        }
+
+#if DEBUG
+        #region Unit testing support
+        /// <summary>
+        /// When implemented in a derived class, destroyes the test data.  Only for unit testing.
+        /// </summary>
+        public void DestroyTestData()
+        {
+            db.DropCollection(collectionName);
+        }
+
+        #endregion
+#endif
+
+
     }
 }
         
