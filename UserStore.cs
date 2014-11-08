@@ -20,7 +20,7 @@ namespace MongoDB.AspNet.Identity
     /// The <see cref="TUser"/> implementation may include a property "UserNameLowerCase" to allow more efficient username searches that are case insensitive.
     /// </remarks>
     public class UserStore<TUser> : IUserLoginStore<TUser>, IUserClaimStore<TUser>, IUserRoleStore<TUser>,
-        IUserPasswordStore<TUser>, IUserSecurityStampStore<TUser>, IUserEmailStore<TUser>, IUserStore<TUser>, IQueryableUserStore<TUser>
+        IUserPasswordStore<TUser>, IUserSecurityStampStore<TUser>, IUserEmailStore<TUser>, IUserStore<TUser>, IQueryableUserStore<TUser>//, IUserLockoutStore<TUser, String>
         where TUser : IdentityUser
     {
         #region Private Methods & Variables
@@ -253,6 +253,10 @@ namespace MongoDB.AspNet.Identity
             if (user == null)
                 throw new ArgumentNullException("user");
 
+            // Set custom properties for the user
+            user.DateCreated = DateTime.UtcNow;
+            user.DateLastModified = user.DateCreated;
+
             db.GetCollection<TUser>(collectionName).Insert(user);
 
             return Task.FromResult(user);
@@ -324,6 +328,9 @@ namespace MongoDB.AspNet.Identity
             ThrowIfDisposed();
             if (user == null)
                 throw new ArgumentNullException("user");
+
+            // update properties
+            user.DateLastModified = DateTime.UtcNow;
 
             db.GetCollection<TUser>(collectionName)
                 .Update(Query.EQ("_id", ObjectId.Parse(user.Id)), Update.Replace(user), UpdateFlags.Upsert);
@@ -570,8 +577,18 @@ namespace MongoDB.AspNet.Identity
         {
             if (String.IsNullOrWhiteSpace(email))
                 throw new ArgumentNullException("email");
+            
+            TUser user = null;
 
-            TUser user = db.GetCollection<TUser>(collectionName).FindOne((Query.EQ("Email", email.ToLower())));
+            if (typeof(TUser).GetProperty("EmailLowerCase") != null)
+            {
+                // TUser implements the lowercase version of the property.
+                user = db.GetCollection<TUser>(collectionName).FindOne((Query.EQ("EmailLowerCase", email.ToLower())));
+            }
+            else
+            {
+                user = db.GetCollection<TUser>(collectionName).FindOne((Query.EQ("Email", email)));
+            }
 
             return Task.FromResult(user);
         }
@@ -590,7 +607,7 @@ namespace MongoDB.AspNet.Identity
         {
             if (String.IsNullOrWhiteSpace(email))
                 throw new ArgumentNullException("email");
-            
+
             user.Email = email.ToLower();
             return Task.FromResult(0);
         }
@@ -624,6 +641,41 @@ namespace MongoDB.AspNet.Identity
 #endif
 
 
+        /*
+        public Task<int> GetAccessFailedCountAsync(TUser user)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> GetLockoutEnabledAsync(TUser user)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<DateTimeOffset> GetLockoutEndDateAsync(TUser user)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> IncrementAccessFailedCountAsync(TUser user)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task ResetAccessFailedCountAsync(TUser user)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SetLockoutEnabledAsync(TUser user, bool enabled)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SetLockoutEndDateAsync(TUser user, DateTimeOffset lockoutEnd)
+        {
+            throw new NotImplementedException();
+        }*/
     }
 }
         
