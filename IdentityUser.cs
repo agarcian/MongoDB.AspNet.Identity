@@ -28,12 +28,36 @@ namespace MongoDB.AspNet.Identity
         /// <summary>
         /// Gets the name of the user in a lower case.  Ignores a setter.
         /// </summary>
-        public virtual string UserNameLowerCase { get; set; }
+        public virtual string UserNameLowerCase
+        {
+            get
+            {
+                return !String.IsNullOrWhiteSpace(UserName) ? UserName.ToLower() : UserName;
+            }
+            set
+            {
+
+            }
+        }
         /// <summary>
         /// Gets or sets the email of the user.
         /// </summary>
         /// <value>The email of the user.</value>
         public virtual string Email { get; set; }
+        /// <summary>
+        /// Gets the email in a lower case.  Ignores a setter.
+        /// </summary>
+        public virtual string EmailLowerCase
+        {
+            get
+            {
+                return !String.IsNullOrWhiteSpace(Email) ? Email.ToLower() : Email;
+            }
+            set
+            {
+
+            }
+        }
         /// <summary>
         /// Gets or sets whether the email has been confirmed for the user.
         /// </summary>
@@ -64,7 +88,17 @@ namespace MongoDB.AspNet.Identity
         /// <value>The logins.</value>
 		public virtual List<UserLoginInfo> Logins { get; private set; }
 
-        
+
+        /// <summary>
+        /// Gets or sets the date and time when this user was created.
+        /// </summary>
+        public DateTime DateCreated { get; set; }
+        /// <summary>
+        /// Gets or sets the date and time when this user was last modified.
+        /// </summary>
+        public DateTime DateLastModified { get; set; }
+
+
         /// <summary>
         /// Initializes a new instance of the <see cref="IdentityUser"/> class.
         /// </summary>
@@ -73,7 +107,9 @@ namespace MongoDB.AspNet.Identity
 			this.Claims = new List<IdentityUserClaim>();
 			this.Roles = new List<string>();
 			this.Logins = new List<UserLoginInfo>();
-		}
+            DateCreated = DateTime.MinValue;
+            DateLastModified = DateTime.MinValue;
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IdentityUser"/> class.
@@ -82,6 +118,11 @@ namespace MongoDB.AspNet.Identity
 		public IdentityUser(string userName) : this()
 		{
 			this.UserName = userName;
+            this.Claims = new List<IdentityUserClaim>();
+            this.Roles = new List<string>();
+            this.Logins = new List<UserLoginInfo>();
+            DateCreated = DateTime.MinValue;
+            DateLastModified = DateTime.MinValue;
 		}
 	}
 
